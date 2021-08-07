@@ -1,54 +1,90 @@
 import React from 'react';
-import {Input, Paper} from "@material-ui/core";
-import red from '@material-ui/core/colors/red';
+import {AppBar, Input, makeStyles, Paper, Theme, Toolbar, Typography} from "@material-ui/core";
 import {createTheme, MuiThemeProvider} from "@material-ui/core"
-import {blue} from "@material-ui/core/colors";
+import {blue, green} from "@material-ui/core/colors";
 import Button from "@material-ui/core/Button"
 
-export let ButtonWithColor = (props: any) =>
-    <MuiThemeProvider theme={createTheme({
-        palette: {
-            primary: props.color,
-        },
-    })}>
-        <Button variant="contained" color="primary" href="" onClick={props.onClick} component={props.component}>
-            {props.children}
-        </Button>
-    </MuiThemeProvider>;
+const version = "2021-08-07a"
+const tmxUrl = "https://github.com/karstenwinter/GeckoKnightData/raw/main/DownloadedData/TheCave.tmx"
 
-/* eslint-disable no-unused-vars */
+const fetchOpt: any = {
+    method: 'no-cors',
+    cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
+    credentials: 'omit', // include, *same-origin, omit
+    headers: {
+        'Content-Type': 'application/json'
+        // 'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    redirect: 'follow', // manual, *follow, error
+    referrerPolicy: 'no-referrer',
+    'sec-fetch-mode': 'no-cors',
+//    'Access-Control-Allow-Origin': ''
+}
 
-const settings = {
-    title: 'React + Material-UI + Firebase',
-    theme: {
-        primaryColor: {
-            name: 'blue',
-            import: blue
-        },
-        secondaryColor: {
-            name: 'red',
-            import: red
-        },
-        type: 'dark'
-    }
-};
+const useStyles = makeStyles((theme: Theme) => ({
+    root: {
+        flexGrow: 1,
+    },
+    menuButton: {
+        marginRight: theme.spacing(2),
+    },
+    title: {
+        flexGrow: 1,
+    },
+}));
 
 function App() {
+
+    let classes = useStyles()
+
+    let ButtonWithColor = (props: any) =>
+        <MuiThemeProvider theme={createTheme({
+            palette: {
+                primary: props.color,
+            },
+        })}>
+            <Button className={classes.menuButton} variant="contained" color="primary" href="" onClick={props.onClick}
+                    component={props.component}>
+                {props.children}
+            </Button>
+        </MuiThemeProvider>
+
+
     let theme = createTheme({
         palette: {
-            primary: settings.theme.primaryColor.import,
-            secondary: settings.theme.secondaryColor.import,
             type: 'dark'
         }
     });
+    let [tmxInput, setTmxInput] = React.useState("")
     let [input, setInput] = React.useState("")
     let [text, setText] = React.useState("")
+    let [took, setTook] = React.useState("")
     let [dx, setDx] = React.useState(0)
     let [fx, setFx] = React.useState(1)
     let [dy, setDy] = React.useState(1)
-    let [fy, setFy] = React.useState(1)
+    let [fy, setFy] = React.useState(-1)
 
-    let parse = (input: string) => {
+    let convertTmx = (xml: string) => {
+        if (xml === undefined)
+            return undefined
+
+        const lines = xml.replace("\r", "").split("\n")
+        let start = lines.findIndex(x => x.includes("<layer name=\"Objects"))
+        let end = lines.findIndex((x, i) => i > start && x.includes("</data>"))
+
+        const objLines = lines.slice(start + 2, end)
+        const objCsv = objLines.map(x => x.split(","))
+        return objCsv
+    }
+    let parseTmx = (xml: string) => {
+        console.log("xml", xml)
+        const objCsv = convertTmx(xml)
+        parse(input, objCsv)
+        console.log("objects layer", objCsv?.join("\n"))
+    }
+    let parse = (input: string, objCsv: string[][] | undefined = undefined) => {
+        const time = new Date().getTime()
+        console.log("parsing savefile with: fx,dx,fy,dy:" + fx + "," + dx + "," + fy + "," + dy)
         const profile = JSON.parse(input)
         const allPos = profile?.collected?.map((id: string) => {
             if (!id.startsWith("px"))
@@ -57,23 +93,29 @@ function App() {
             // px240y-311
             return {
                 x: dx + fx * parseInt(parts[0]?.substring(2)),
-                y: dy + fy * parseInt(parts[1]?.substring(1))
+                y: dy + fy * parseInt(parts[1])
             }
         }).filter((x: any) => !!x)
         //console.log(allPos)
+        const shells = "221 222 223 224 225".split(' ')
         const html = profile?.map?.map((row: string, y: number) => row.split("")
             .map((col, x: number) => {
-                return allPos.find((p: any) => p.x === x && p.y === y) ? "<span style='background: red'>G</span>" : col
+                const inTmx = objCsv && objCsv[y - 1] && shells.includes(objCsv[y - 1][x])
+                const inSave = allPos.find((p: any) => p.x === x && p.y === y)
+                return inSave ? "<span style='background: green'>S</span>" : inTmx ? "<span style='background: red'>S</span>" : col
             }).join("")
         )?.join("\n")
-        setText("fx,dx,fy,dy:" + fx + "," + dx + "," + fy + "," + dy + "\n" + html)
+        const took = new Date().getTime() - time
+        setTook(took / 1000.0 + "sec")
+        setText(html)
     }
     //let hr = window.location.href || "";
     return (<MuiThemeProvider theme={theme}>
-        <div style={{minHeight: '100vh', backgroundColor: theme.palette.type === 'dark' ? '#303030' : '#fafafa'}}>
-            <Paper className="App">
-
-                {/*FX
+        <div className={classes.root}
+             style={{minHeight: '100vh', backgroundColor: theme.palette.type === 'dark' ? '#303030' : '#fafafa'}}>
+            <AppBar position="static">
+                <Toolbar>
+                    {/*FX
                 <Input onChange={(x: any) => {
                     setFx(parseInt(x.target.value))
                     parse(input)
@@ -96,37 +138,77 @@ function App() {
                     setDy(parseInt(x.target.value))
                     parse(input)
                 }} type="number" value={dy}/>*/}
+                    <Typography className={classes.menuButton} component="span">Gecko Knight Viewer
+                        v{version}</Typography>
+                    {/*<ButtonWithColor color={green} onClick={() => {
+                        fetch(tmxUrl, fetchOpt)
+                            .then(x => x.text())
+                            .then(parseTmx)
+                    }}>
+                        Fetch Tilemap
+                    </ButtonWithColor>*/}
+                    <ButtonWithColor color={green}
+                                     variant="contained"
+                                     component="label">
+                        Open Tilemap.tmx
+                        <input
+                            type="file"
+                            hidden onChange={(event: any) => {
+                            if (event.target.files?.length > 0) {
+                                //this.setState({error: "", loading: true})
+                                const file = event.target.files[0]
+                                const reader = new FileReader()
 
-                <ButtonWithColor color={blue}
-                                 variant="contained"
-                                 component="label">
-                    Open Gecko Knight Profile.json
-                    <input
-                        type="file"
-                        hidden onChange={(event: any) => {
-                        if (event.target.files?.length > 0) {
+                                // Read file into memory as UTF-16
+                                reader.readAsText(file, "UTF-8")
 
-                            //this.setState({error: "", loading: true})
-
-                            const file = event.target.files[0]
-                            const reader = new FileReader()
-
-                            // Read file into memory as UTF-16
-                            reader.readAsText(file, "UTF-8")
-
-                            // Handle progress, success, and errors
-                            //reader.onprogress = x => console.log("onprogress: ", x);
-                            reader.onload = (e: any) => {
-                                const text = e.target.result
-                                console.log("text", text)
-                                setInput(text)
-                                parse(text)
+                                // Handle progress, success, and errors
+                                //reader.onprogress = x => console.log("onprogress: ", x);
+                                reader.onload = (e: any) => {
+                                    const text = e.target.result
+                                    console.log("tmx", text)
+                                    setTmxInput(text)
+                                    parseTmx(text)
+                                }
+                                //reader.onerror = x => console.log("onerror: ", x);
                             }
-                            //reader.onerror = x => console.log("onerror: ", x);
-                        }
-                    }}
-                    />
-                </ButtonWithColor>
+                        }}
+                        />
+                    </ButtonWithColor>
+                    <ButtonWithColor color={blue}
+                                     variant="contained"
+                                     component="label">
+                        Open Profile.json
+                        <input
+                            type="file"
+                            hidden onChange={(event: any) => {
+                            if (event.target.files?.length > 0) {
+                                //this.setState({error: "", loading: true})
+                                const file = event.target.files[0]
+                                const reader = new FileReader()
+
+                                // Read file into memory as UTF-16
+                                reader.readAsText(file, "UTF-8")
+
+                                // Handle progress, success, and errors
+                                //reader.onprogress = x => console.log("onprogress: ", x);
+                                reader.onload = (e: any) => {
+                                    const text = e.target.result
+                                    console.log("text", text)
+                                    setInput(text)
+                                    parse(text, convertTmx(tmxInput))
+                                }
+                                //reader.onerror = x => console.log("onerror: ", x);
+                            }
+                        }}
+                        />
+                    </ButtonWithColor>
+                    <Typography component="span">{took == "" ? "" : took}</Typography>
+
+                </Toolbar>
+            </AppBar>
+
+            <Paper>
                 <pre dangerouslySetInnerHTML={{__html: text}}/>
             </Paper>
         </div>
