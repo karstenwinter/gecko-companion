@@ -4,7 +4,7 @@ import {createTheme, MuiThemeProvider} from "@material-ui/core"
 import {blue, green} from "@material-ui/core/colors";
 import Button from "@material-ui/core/Button"
 
-const version = "2021-08-07a"
+const version = "2021-08-07b"
 const tmxUrl = "https://github.com/karstenwinter/GeckoKnightData/raw/main/DownloadedData/TheCave.tmx"
 
 const fetchOpt: any = {
@@ -28,6 +28,11 @@ const useStyles = makeStyles((theme: Theme) => ({
     menuButton: {
         marginRight: theme.spacing(2),
     },
+    menuText: {
+        marginRight: theme.spacing(2),
+        marginTop: theme.spacing(0),
+    },
+    pre: {background: '#000000', color: '#ddd'},
     title: {
         flexGrow: 1,
     },
@@ -112,9 +117,9 @@ function App() {
     //let hr = window.location.href || "";
     return (<MuiThemeProvider theme={theme}>
         <div className={classes.root}
-             style={{minHeight: '100vh', backgroundColor: theme.palette.type === 'dark' ? '#303030' : '#fafafa'}}>
-            <AppBar position="static">
-                <Toolbar>
+             style={{minHeight: '100vh', backgroundColor: '#000000', color: "#ffffff"}}>
+            <div>
+                <div>
                     {/*FX
                 <Input onChange={(x: any) => {
                     setFx(parseInt(x.target.value))
@@ -138,7 +143,7 @@ function App() {
                     setDy(parseInt(x.target.value))
                     parse(input)
                 }} type="number" value={dy}/>*/}
-                    <Typography className={classes.menuButton} component="span">Gecko Knight Viewer
+                    <Typography className={classes.menuText} component="span">Gecko Knight Viewer
                         v{version}</Typography>
                     {/*<ButtonWithColor color={green} onClick={() => {
                         fetch(tmxUrl, fetchOpt)
@@ -203,14 +208,11 @@ function App() {
                         }}
                         />
                     </ButtonWithColor>
-                    <Typography component="span">{took == "" ? "" : took}</Typography>
+                    <Typography className={classes.menuText} component="span">{took === "" ? "" : took}</Typography>
+                </div>
+            </div>
 
-                </Toolbar>
-            </AppBar>
-
-            <Paper>
-                <pre dangerouslySetInnerHTML={{__html: text}}/>
-            </Paper>
+            <pre className={classes.pre} dangerouslySetInnerHTML={{__html: text}}/>
         </div>
     </MuiThemeProvider>)
 }
